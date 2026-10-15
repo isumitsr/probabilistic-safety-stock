@@ -4,7 +4,7 @@
 
 This project is part of the AAI 500 Probability and Statistics for AI course in the Master of Science (M.S) in Applied Artificial Intelligence program at the University of San Diego.
 
-**Project status:** Planned
+**Project status:** In progress. The data audit and preparation, time-series EDA, point-forecast comparison, uncertainty calibration, and safety-stock calculations are complete. The inventory-policy simulation is the next major stage.
 
 ## Project objective
 
@@ -77,9 +77,11 @@ Open the notebooks in numeric order, beginning with:
 notebooks/01_data_audit_and_eda.ipynb
 ```
 
-The first notebook also checks the local data and calls the download helper automatically if a required file is missing or invalid. Once the data audit passes, continue developing the remaining notebooks and project sections in their documented order.
+The first notebook also checks the local data and calls the download helper automatically if a required file is missing or invalid. Once the data audit passes, run the remaining numbered notebooks in order.
 
 See [`setup.md`](setup.md) for the complete environment, authentication, data-download, and verification instructions.
+
+For a detailed explanation of the work completed so far, read the [implementation walkthrough](docs/implementation_walkthrough.md). For formulas, algorithms, data schemas, and validation rules, use the [technical implementation reference](docs/technical_implementation_reference.md).
 
 ## Team members and contributors
 
@@ -90,18 +92,16 @@ See [`setup.md`](setup.md) for the complete environment, authentication, data-do
 ## Methods used
 
 - Exploratory data analysis of demand, seasonality, intermittency, and variability
-- Time-series forecasting
-- Probability distributions and predictive uncertainty
-- [to be updated, as we go along]
+- Fixed-origin time-series forecast validation
+- Empirical forecast-error distributions and quantile forecasts
+- Safety-stock planning under explicit lead-time assumptions
+- Inventory-policy simulation (planned)
 
 ## Technologies
 
 - Python
 - pandas and NumPy for data preparation
 - Matplotlib/ Seaborn for visualization
-- SciPy for probability distributions and statistical calculations
-- statsmodels for statistical forecasting
-- scikit-learn and/or a quantile-regression library for the machine-learning comparison
 - Jupyter Notebook/ VSCode Notebooks
 - Git and GitHub for version control and collaboration
 - Trello for Project Management
@@ -125,14 +125,16 @@ The raw sales file is in wide format. We will reshape the daily columns into a l
 
 The full M5 dataset is large, so the analysis will use a documented sample of product-store series. The sample will represent different stores, categories, and demand patterns, including relatively stable, seasonal, intermittent, and highly variable series. The selection rule and final series list will be recorded in the repository so that the analysis can be reproduced.
 
-### Planned analysis workflow
+### Analysis workflow
 
-1. Audit the raw files, data types, missing values, duplicate keys, and date coverage.
-2. Convert the sales data from wide to long format.
-3. Merge calendar events and selling prices without using future information.
-4. Explore trends, weekly seasonality, event effects, zero-sales days, and demand variability.
-5. Create chronological training, validation, and test periods.
-6. [to be updated as we go along]
+1. Audit the raw files, data types, missing values, duplicate keys, and date coverage. Completed in notebook 01.
+2. Protect the final 28-day test period and create chronological training and validation periods. Completed in notebook 02.
+3. Select a reproducible group of product-store series covering different demand patterns. Completed in notebook 02.
+4. Convert the selected sales to long format and join calendar and price data. Completed in notebook 02.
+5. Study sparsity, variability, recent history, weekday patterns, autocorrelation, and seven-day demand. Completed in notebook 03.
+6. Build and compare point-forecast baselines on the validation period. Completed in notebook 04.
+7. Estimate predictive uncertainty and translate it into safety-stock planning levels. Completed in notebook 05.
+8. Simulate and compare the fixed-buffer and probabilistic inventory policies. Planned for notebook 06.
 
 ### Inventory-policy comparison
 
@@ -178,7 +180,12 @@ The results will apply only to the selected product-store series and the assumpt
 ├── requirements.txt
 ├── docs/
 │   ├── README.md
-│   └── project_structure.md
+│   ├── project_structure.md
+│   ├── implementation_walkthrough.md
+│   ├── technical_implementation_reference.md
+│   ├── series_selection_and_splits.md
+│   ├── forecasting_method.md
+│   └── uncertainty_and_safety_stock.md
 ├── data/
 │   ├── raw/              # Downloaded M5 files, not committed to GitHub
 │   └── processed/        # Generated analysis-ready data, if needed
@@ -186,16 +193,19 @@ The results will apply only to the selected product-store series and the assumpt
 │   └── download_data.py  # Kaggle download and checksum verification
 ├── notebooks/
 │   ├── 01_data_audit_and_eda.ipynb
-│   ├── 02_forecasting.ipynb
-│   ├── 03_uncertainty_and_safety_stock.ipynb
-│   └── 04_inventory_simulation.ipynb
+│   ├── 02_data_preparation_and_series_selection.ipynb
+│   ├── 03_time_series_eda.ipynb
+│   ├── 04_forecasting.ipynb
+│   ├── 05_uncertainty_and_safety_stock.ipynb
+│   └── 06_inventory_simulation.ipynb
 ├── src/
-│   ├── data_prep.py
-│   ├── forecasting.py
-│   ├── inventory_simulation.py
-│   └── evaluation.py
+│   └── __init__.py         # Reserved for genuinely reusable project code
 ├── reports/
 │   ├── initial_data_audit_summary.md
+│   ├── data_preparation_and_selection_summary.md
+│   ├── time_series_eda_summary.md
+│   ├── forecasting_summary.md
+│   ├── uncertainty_and_safety_stock_summary.md
 │   └── figures/
 └── LICENSE
 ```
