@@ -20,3 +20,12 @@ reports/figures/*
 !reports/figures/initial_data_audit/
 reports/figures/initial_data_audit/*
 !reports/figures/initial_data_audit/*.png
+!reports/figures/series_eda/
+reports/figures/series_eda/*
+!reports/figures/series_eda/*.png
+!reports/figures/forecasting/
+reports/figures/forecasting/*
+!reports/figures/forecasting/*.png
+!reports/figures/uncertainty_safety_stock/
+reports/figures/uncertainty_safety_stock/*
+!reports/figures/uncertainty_safety_stock/*.png
