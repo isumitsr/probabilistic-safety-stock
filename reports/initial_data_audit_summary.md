@@ -30,13 +30,13 @@ The files are not stored in Git. The project download script gets them from Kagg
 | Unique products | 3,049 | The products appear across the 10 stores. |
 | Evaluation history | 1,941 days | The evaluation sales file covers `d_1` through `d_1941`. |
 | Duplicate series IDs | 0 | Each product-store series appears once. |
-| Negative sales values | 0 | No structurally invalid negative unit sales were found. |
-| Zero-sales observations | About 68% | Many product-store series have sparse or intermittent recorded sales. |
+| Negative training sales values | 0 | No structurally invalid negative unit sales were found through `d_1885`. |
+| Training zero-sales observations | 68.37% | Many product-store series have sparse or intermittent recorded sales. |
 | Calendar problems | 0 | The dates are unique, complete, and consecutive. |
 | Duplicate price keys | 0 | Each store-item-week price key appears once. |
 | Missing or non-positive stored prices | 0 | Every price record that exists has a valid positive value. |
 
-These results show that the files have a valid basic structure. They do not prove that every sales row will have a matching price after the data are changed to long format. We will test the final join in the next stage.
+These results show that the files have a valid basic structure. They do not prove that every sales row has a matching price after the data are changed to long format; notebook 02 performs that join-level check.
 
 ## Initial figures
 
@@ -44,7 +44,7 @@ These results show that the files have a valid basic structure. They do not prov
 
 ![Total recorded M5 unit sales over time](figures/initial_data_audit/total_sales_over_time.png)
 
-The daily total changes across the full history. The 28-day rolling average also shows that the general sales level changes over time. This means dates should remain in order when we train and test forecasting models. A random train-test split would mix earlier and later sales periods and could give misleading results.
+The daily total changes across the training history. The 28-day rolling average also shows that the general sales level changes over time. This means dates should remain in order when we train and test forecasting models. A random train-test split would mix earlier and later sales periods and could give misleading results.
 
 The sharp low points need more investigation. We should check calendar events and store-level patterns before giving them a business explanation.
 

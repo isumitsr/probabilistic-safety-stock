@@ -4,13 +4,13 @@
 
 This project is part of the AAI 500 Probability and Statistics for AI course in the Master of Science (M.S) in Applied Artificial Intelligence program at the University of San Diego.
 
-**Project status:** In progress. The data audit and preparation, time-series EDA, point-forecast comparison, uncertainty calibration, and safety-stock calculations are complete. The inventory-policy simulation is the next major stage.
+**Project status:** Analysis complete. The project includes data audit and preparation, time-series EDA, statistical forecasting, empirical uncertainty, bootstrap inference, distribution diagnostics, periodic-review inventory simulation, and one final holdout evaluation.
 
 ## Project objective
 
 Retailers must decide how much inventory to hold when future demand is uncertain. Too little inventory can lead to stockouts and missed sales, while too much inventory ties up cash and increases holding risk. A fixed buffer does not respond to the different demand patterns of individual products and stores.
 
-This project investigates whether probabilistic demand forecasts can support better safety-stock decisions than a simple forecasting method combined with a fixed inventory buffer. We will compare forecast accuracy, forecast uncertainty, simulated stockouts, service levels, and inventory held under clearly stated replenishment assumptions.
+This project investigates whether probabilistic demand forecasts can support better safety-stock decisions than a simple forecasting method combined with a fixed inventory buffer. It compares forecast accuracy, forecast uncertainty, simulated stockouts, service levels, and inventory held under clearly stated replenishment assumptions.
 
 Our central research question is:
 
@@ -94,8 +94,10 @@ For a detailed explanation of the work completed so far, read the [implementatio
 - Exploratory data analysis of demand, seasonality, intermittency, and variability
 - Fixed-origin time-series forecast validation
 - Empirical forecast-error distributions and quantile forecasts
+- Cluster bootstrap confidence intervals and paired inference
+- Normal, Poisson, negative-binomial, and empirical distribution diagnostics
 - Safety-stock planning under explicit lead-time assumptions
-- Inventory-policy simulation (planned)
+- Periodic-review inventory-policy simulation and final holdout evaluation
 
 ## Technologies
 
@@ -119,11 +121,11 @@ The project uses the public M5 Walmart sales dataset. The competition data conta
 | `calendar.csv` | Date and event information | Dates, weekdays, months, years, events, and SNAP indicators |
 | `sell_prices.csv` | Price information | Store, item, selling week, and selling price |
 
-The raw sales file is in wide format. We will reshape the daily columns into a long time-series table and merge the calendar and price information using the appropriate date and store-item keys.
+The raw sales file is in wide format. Notebook 02 reshapes the selected daily columns into a long time-series table and merges calendar and price information using the appropriate date and store-item keys.
 
 ### Series selection
 
-The full M5 dataset is large, so the analysis will use a documented sample of product-store series. The sample will represent different stores, categories, and demand patterns, including relatively stable, seasonal, intermittent, and highly variable series. The selection rule and final series list will be recorded in the repository so that the analysis can be reproduced.
+The full M5 dataset is large, so the analysis uses a documented sample of 12 product-store series. The sample covers different stores, categories, and demand profiles, including stable, weekly-pattern, intermittent, and variable series. The reproducible selection rule and final series list are recorded in notebook 02 and the supporting documentation.
 
 ### Analysis workflow
 
@@ -134,18 +136,19 @@ The full M5 dataset is large, so the analysis will use a documented sample of pr
 5. Study sparsity, variability, recent history, weekday patterns, autocorrelation, and seven-day demand. Completed in notebook 03.
 6. Build and compare point-forecast baselines on the validation period. Completed in notebook 04.
 7. Estimate predictive uncertainty and translate it into safety-stock planning levels. Completed in notebook 05.
-8. Simulate and compare the fixed-buffer and probabilistic inventory policies. Planned for notebook 06.
+8. Add distribution diagnostics, cluster-bootstrap inference, and a 14-day protection-period calibration. Completed in notebook 06.
+9. Simulate the fixed-buffer and probabilistic policies and evaluate them once on the protected final period. Completed in notebook 07.
 
 ### Inventory-policy comparison
 
-The probabilistic policy will use an upper forecast quantile for demand during the assumed lead time. In simplified form:
+The probabilistic policy uses an upper forecast quantile for demand over the 14-day protection period. In simplified form:
 
 ```text
-Order-up-to level = forecast demand during lead time + uncertainty buffer
-Safety stock = order-up-to level - expected demand during lead time
+Order-up-to level = protection-period forecast + uncertainty buffer
+Safety stock = order-up-to level - expected protection-period demand
 ```
 
-The comparison policy will use a simple forecast and a fixed buffer. Lead times, review frequency, starting inventory, replenishment rules, and any holding or stockout-cost assumptions will be stated before the simulation is run.
+The comparison policy uses the same point forecast and a fixed additive buffer matched to the probabilistic policy's average buffer. Both policies use a 7-day review interval, 7-day lead time, lost sales, and identical demand paths.
 
 ### Research questions and hypotheses
 
@@ -163,13 +166,17 @@ The comparison policy will use a simple forecast and a fixed buffer. Lead times,
 
 ### Evaluation metrics
 
-Forecast performance will be evaluated with metrics such as MAE, RMSE, WAPE, and quantile or pinball loss where appropriate. Predictive uncertainty will be assessed using interval coverage and interval width. Inventory policies will be compared using simulated stockout rate, service level or fill rate, average inventory held, and the tradeoff between service and inventory.
+Forecast performance is evaluated with MAE, RMSE, WAPE, and quantile or pinball loss where appropriate. Predictive uncertainty is assessed using interval coverage and interval width. Inventory policies are compared using simulated stockout-day rate, fill rate, unmet units, average ending inventory, and the tradeoff between service and inventory.
+
+### Main conclusion
+
+At the 90% and 95% targets, the probabilistic policy produced higher final-period fill rate, fewer unmet units, and slightly lower average ending inventory than the matched fixed-buffer policy. However, it produced slightly more stockout days, and every 95% cluster-bootstrap interval for the policy differences included zero. The evidence is suggestive rather than conclusive and differs by demand profile. See the [final project summary](reports/final_project_summary.md).
 
 ### Scope and limitations
 
-The M5 data record observed sales, not complete inventory positions or unmet customer demand. The dataset also does not provide the supplier lead times, replenishment rules, or inventory costs required to reproduce Walmart's actual decisions. Therefore, lead times, starting inventory, ordering rules, and cost assumptions will be explicit modeling assumptions. Stockouts, service levels, and inventory outcomes reported in this project are simulation results, not measured Walmart outcomes.
+The M5 data record observed sales, not complete inventory positions or unmet customer demand. The dataset also does not provide the supplier lead times, replenishment rules, or inventory costs required to reproduce Walmart's actual decisions. Therefore, lead time, starting inventory, and ordering rules are explicit modeling assumptions. Stockouts, service levels, and inventory outcomes reported in this project are simulation results, not measured Walmart outcomes.
 
-The results will apply only to the selected product-store series and the assumptions used in the simulation. They should not be interpreted as a recommendation for Walmart's actual inventory system without additional operational data.
+The results apply only to the selected product-store series and the assumptions used in the simulation. They should not be interpreted as a recommendation for Walmart's actual inventory system without additional operational data.
 
 ## Repository structure
 
@@ -185,7 +192,9 @@ The results will apply only to the selected product-store series and the assumpt
 │   ├── technical_implementation_reference.md
 │   ├── series_selection_and_splits.md
 │   ├── forecasting_method.md
-│   └── uncertainty_and_safety_stock.md
+│   ├── uncertainty_and_safety_stock.md
+│   ├── statistical_inference_method.md
+│   └── inventory_simulation_method.md
 ├── data/
 │   ├── raw/              # Downloaded M5 files, not committed to GitHub
 │   └── processed/        # Generated analysis-ready data, if needed
@@ -197,7 +206,8 @@ The results will apply only to the selected product-store series and the assumpt
 │   ├── 03_time_series_eda.ipynb
 │   ├── 04_forecasting.ipynb
 │   ├── 05_uncertainty_and_safety_stock.ipynb
-│   └── 06_inventory_simulation.ipynb
+│   ├── 06_statistical_inference_and_distribution_analysis.ipynb
+│   └── 07_inventory_policy_simulation_and_final_evaluation.ipynb
 ├── src/
 │   └── __init__.py         # Reserved for genuinely reusable project code
 ├── reports/
@@ -206,13 +216,14 @@ The results will apply only to the selected product-store series and the assumpt
 │   ├── time_series_eda_summary.md
 │   ├── forecasting_summary.md
 │   ├── uncertainty_and_safety_stock_summary.md
+│   ├── statistical_inference_summary.md
+│   ├── final_project_summary.md
 │   └── figures/
-└── LICENSE
 ```
 
-## License and data use
+## Data use
 
-The project code will use the license specified in the repository's `LICENSE` file. The M5 files remain subject to the Kaggle competition rules and are not redistributed through this repository. Users should download the data directly from Kaggle and follow its terms of use.
+The M5 files remain subject to the Kaggle competition rules and are not redistributed through this repository. Users should download the data directly from Kaggle and follow its terms of use.
 
 ## Acknowledgments
 

@@ -10,13 +10,7 @@ This directory contains the technical documentation for the project. Documentati
 - [`series_selection_and_splits.md`](series_selection_and_splits.md): defines the protected periods, deterministic selection rules, and processed outputs used by later notebooks.
 - [`forecasting_method.md`](forecasting_method.md): records the point-forecast baselines, validation design, metrics, and selection rule.
 - [`uncertainty_and_safety_stock.md`](uncertainty_and_safety_stock.md): documents empirical uncertainty calibration and the safety-stock planning assumptions.
+- [`statistical_inference_method.md`](statistical_inference_method.md): explains the distribution checks, cluster bootstrap, confidence intervals, and 14-day protection-period correction.
+- [`inventory_simulation_method.md`](inventory_simulation_method.md): records the periodic-review policies, matched-buffer comparison, final-test simulation, and paired inference.
 
-## Planned documentation
-
-Later project stages may add focused documents for:
-
-- inventory-simulation assumptions;
-- evaluation metrics; and
-- final model and policy decisions.
-
-Documentation should describe the implemented work. A planned method should be clearly labeled as planned until it has been implemented and verified.
+All implemented stages now have focused documentation. Any later sensitivity analysis should be documented separately rather than changing the final-test design after seeing its result.

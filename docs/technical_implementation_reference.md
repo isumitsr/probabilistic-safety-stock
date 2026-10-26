@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-This document records the implemented technical design through notebook 05. It is intended for someone who needs to reproduce, review, or extend the work. It covers data flow, formulas, algorithms, validation rules, generated artifacts, and known technical boundaries.
+This document records the implemented technical design through notebook 07. It is intended for someone who needs to reproduce, review, or extend the work. It covers data flow, formulas, algorithms, validation rules, generated artifacts, and known technical boundaries.
 
 Implemented notebooks:
 
@@ -11,8 +11,8 @@ Implemented notebooks:
 3. `03_time_series_eda.ipynb`
 4. `04_forecasting.ipynb`
 5. `05_uncertainty_and_safety_stock.ipynb`
-
-Notebook 06, inventory-policy simulation, is not implemented yet.
+6. `06_statistical_inference_and_distribution_analysis.ipynb`
+7. `07_inventory_policy_simulation_and_final_evaluation.ipynb`
 
 ## 2. Execution contract
 
@@ -64,7 +64,7 @@ TEST_END = 1941
 
 Notebook 02 reads only identifiers and daily values through `d_1913` into `sales_development`. Every downstream processed table is built from that object. Assertions verify that the maximum development day is 1913.
 
-Notebook 01 is different: it audits the full evaluation file and uses it for two initial descriptive charts. Those charts are not used for series selection or model selection. If the project later adopts a strict rule that no target value from the final period may be visualized before final evaluation, notebook 01's two EDA calculations should be limited to the training period. This does not affect notebooks 02 through 05.
+Notebook 01 reads the evaluation-file header to confirm that the source extends through `d_1941`, but its sales-value audit and initial descriptive charts use only `d_1` through `d_1885`. Notebook 02 then reads development values through `d_1913`. Final-test values from `d_1914` through `d_1941` are first loaded in notebook 07, after the policy rules have been fixed.
 
 ## 5. Notebook 01 technical design
 
@@ -327,7 +327,7 @@ This rule produces one selected model for every series.
 
 ### Shared forecasting helper
 
-`baseline_forecast(history, model, horizon)` implements the three forecast rules and rejects unknown model names. It is the only custom analytical function in notebooks 02 through 05 because the same logic is reused for calibration, validation, and next-period planning.
+`baseline_forecast(history, model, horizon)` implements the three forecast rules and rejects unknown model names. The same compact helper is used where the forecast rules must be repeated for calibration, validation, protection-period forecasting, and final simulation.
 
 ### Planning constants
 
@@ -410,88 +410,138 @@ The output has 36 rows: 12 series by three target quantiles.
 | `validation_weekly_probabilistic_forecasts.csv` | 48 | series x validation week |
 | `safety_stock_levels.csv` | 36 | series x target quantile |
 
-## 10. Data lineage
+## 10. Notebook 06 technical design
+
+### Distribution diagnostics
+
+Training observations form 269 complete seven-day totals per series. The notebook calculates mean, variance, variance-to-mean ratio, zero-week share, skewness, and empirical 80th, 90th, and 95th percentiles.
+
+Normal, Poisson, and negative-binomial quantiles are calculated for comparison. Method-of-moments negative-binomial parameters are:
+
+$$
+r=\frac{\mu^2}{\sigma^2-\mu}, \qquad p=\frac{r}{r+\mu},
+$$
+
+when $\sigma^2>\mu$. Every selected series satisfies this overdispersion condition.
+
+### Cluster bootstrap
+
+The resampling unit is a complete product-store series. Each replicate samples 12 series with replacement and retains the four validation weeks belonging to each selected cluster. The project uses 5,000 replicates and percentile intervals.
+
+For forecast model $m$, each replicate calculates mean validation MAE. Paired distributions are then formed for:
+
+$$
+MAE_{seasonal}-MAE_{mean28}
+$$
+
+and
+
+$$
+MAE_{last}-MAE_{mean28}.
+$$
+
+Coverage intervals use the same cluster design. Safety-stock quantile uncertainty uses 2,000 within-series bootstrap samples of the 52 calibration errors.
+
+### Fourteen-day protection period
+
+For weekly review $R=7$ and lead time $L=7$:
+
+$$
+P=R+L=14.
+$$
+
+The selected baseline predicts each 14-day training window. Empirical error quantiles at 0.80, 0.90, and 0.95 are clipped at zero to form the probabilistic protection buffers.
+
+## 11. Notebook 07 technical design
+
+### Matched policy buffers
+
+For target $q$, series $i$ receives probabilistic buffer $b_{iq}$. The fixed buffer is:
+
+$$
+\bar b_q=\frac{1}{12}\sum_{i=1}^{12}b_{iq}.
+$$
+
+This gives both policies the same mean protection buffer before rounding.
+
+### Periodic-review sequence
+
+At review days 0, 7, 14, and 21:
+
+1. scheduled orders arrive;
+2. the selected model forecasts 14-day demand;
+3. inventory position equals on-hand plus outstanding orders;
+4. order-up-to level equals forecast plus policy buffer; and
+5. a nonnegative order is scheduled to arrive after seven days.
+
+Daily fulfillment is:
+
+$$
+fulfilled_t=\min(onhand_t,demand_t),
+$$
+
+$$
+unmet_t=demand_t-fulfilled_t.
+$$
+
+Unmet demand is treated as lost sales.
+
+### Paired inference
+
+The final comparison uses 5,000 cluster-bootstrap replicates of complete series. Differences are always probabilistic minus fixed. Exact sign-flip tests enumerate all $2^{12}=4096$ sign patterns for per-series unmet units, stockout-day rate, and average ending inventory.
+
+### Saved outputs
+
+| File | Grain |
+|---|---|
+| `final_inventory_simulation_daily.csv` | series x target x policy x final-test day |
+| `final_inventory_review_orders.csv` | series x target x policy x review |
+| `final_policy_metrics.csv` | target x policy |
+| `final_policy_metrics_by_profile.csv` | target x profile x policy |
+| `final_policy_comparison_inference.csv` | target x comparison metric |
+
+## 12. Data lineage
 
 ```text
-M5 raw CSV files
-    |
-    | notebook 01: audit only
-    v
-sales_train_evaluation + calendar + sell_prices
-    |
-    | notebook 02: training-only measures, deterministic selection,
-    |              long reshape, validated joins
-    v
-selected_series_metadata.csv
-selected_series_development.csv
-    |                         |
-    | notebook 03             | notebook 04
-    | training-only EDA       | validation forecasts and selection
-    v                         v
-report figures          validation_point_forecasts.csv
-                        forecast_validation_metrics.csv
-                        forecast_model_selection.csv
-                                    |
-                                    | notebook 05
-                                    v
-                        weekly_uncertainty_calibration.csv
-                        validation_weekly_probabilistic_forecasts.csv
-                        safety_stock_levels.csv
+raw M5 files
+    -> notebook 01: training-only audit and initial EDA
+    -> notebook 02: selection, split, and validated joins
+    -> notebook 03: training-only time-series EDA
+    -> notebook 04: validation point forecasts
+    -> notebook 05: seven-day empirical uncertainty
+    -> notebook 06: bootstrap inference and 14-day protection calibration
+    -> notebook 07: fixed policies, then one final-test evaluation
 ```
 
-## 11. Validation safeguards
+## 13. Validation safeguards
 
-The implementation includes assertions or explicit checks for:
+The implementation checks:
 
 - verified raw-file checksums;
-- expected chronological boundaries;
-- non-overlapping validation and test periods;
-- unique selected item-store pairs;
-- required store, state, category, and profile coverage;
-- expected long-table row counts;
+- chronological and non-overlapping periods;
+- training-only selection and inference inputs;
+- selected-series store, state, category, and profile coverage;
 - many-to-one calendar and price joins;
-- absence of duplicate series-date rows;
-- complete sales matrices for forecasting;
-- expected forecast, calibration, validation, and safety-stock row counts;
-- nonnegative forecasts and safety stock; and
-- maximum processed day equal to `d_1913`.
+- expected rows in forecast, bootstrap, calibration, and simulation tables;
+- nonnegative forecasts, inventory, fulfillment, and unmet units;
+- fulfilled plus unmet units equal recorded demand;
+- equal average protection buffers across policies; and
+- exactly 12 selected series and 28 final-test days.
 
-All notebooks 02 through 05 have been executed from top to bottom with no error outputs, no standard-error warnings, and no unexecuted code cells.
+All notebooks 01 through 07 have been executed from top to bottom without error outputs, standard-error warnings, or unexecuted code cells.
 
-## 12. Current limitations
+## 14. Limitations
 
-1. The 12 series are purposively selected, so results cannot be generalized statistically to all 30,490 M5 series.
-2. Recorded sales are an imperfect proxy for unconstrained demand.
-3. The point-forecast candidates are intentionally simple and do not yet include a regression model with calendar or price predictors.
-4. Model selection and uncertainty evaluation both use the same 28-day validation period in different ways. Final claims require the untouched final period.
-5. Each series has only 52 weekly calibration errors, so empirical tail quantiles are uncertain.
-6. The seven-day lead time and weekly review frequency are assumptions rather than observed Walmart settings.
-7. Price and event fields are joined and audited but are not used in the current baseline forecasts.
-8. No inventory process has been simulated, so service and inventory performance are not yet known.
+1. The 12 series are purposively selected and do not support population inference for all M5 products.
+2. Recorded sales may be lower than unconstrained demand.
+3. Inventory availability and Walmart replenishment decisions are not observed.
+4. The lead time, review interval, lost-sales rule, and initial inventory are project assumptions.
+5. Tail quantiles use only 51 or 52 training origins per series.
+6. The final test contains four weekly reviews, producing wide policy-difference intervals.
+7. Price, event, and SNAP variables are not used in the forecast baselines.
+8. The final result differs across demand profiles and service metrics.
 
-## 13. Required interface for notebook 06
-
-The inventory simulation should consume:
-
-- observed evaluation-period sales for the selected series;
-- the selected point-forecast model for each series;
-- fixed-buffer policy parameters;
-- probabilistic safety-stock values or demand quantiles;
-- lead time, review interval, and starting-inventory assumptions; and
-- a clearly defined lost-sales or backorder rule.
-
-Both policies must use the same demand path and operational assumptions. The output should include at least:
-
-- simulated units demanded and fulfilled;
-- simulated unmet units;
-- stockout-day rate;
-- fill rate or cycle service level;
-- average and ending inventory; and
-- results by series, demand profile, and policy.
-
-The final test should be opened only after these choices and comparison metrics are fixed.
-
-## 14. Course boundary
+## 15. Course boundary
 
 The implementation deliberately uses methods appropriate for AAI 500:
 
@@ -501,6 +551,8 @@ The implementation deliberately uses methods appropriate for AAI 500:
 - empirical probability distributions and quantiles;
 - asymmetric quantile loss;
 - transparent statistical forecasting baselines; and
+- cluster bootstrap confidence intervals and paired sign-flip tests;
+- normal, Poisson, negative-binomial, and empirical distribution checks; and
 - simulation-based inference under explicit assumptions.
 
-No neural networks, advanced optimization systems, or opaque automated-modeling frameworks are required for the current research question. A later linear-regression comparison would be appropriate only if it has a clear hypothesis, uses training-only features, and is assessed on the same chronological validation period.
+No neural networks, advanced optimization systems, or opaque automated-modeling frameworks are used. Linear regression was not forced into the workflow because the empirical uncertainty and policy comparison answer the stated research question directly.

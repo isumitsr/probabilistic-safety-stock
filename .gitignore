@@ -29,3 +29,9 @@ reports/figures/forecasting/*
 !reports/figures/uncertainty_safety_stock/
 reports/figures/uncertainty_safety_stock/*
 !reports/figures/uncertainty_safety_stock/*.png
+!reports/figures/statistical_inference/
+reports/figures/statistical_inference/*
+!reports/figures/statistical_inference/*.png
+!reports/figures/inventory_simulation/
+reports/figures/inventory_simulation/*
+!reports/figures/inventory_simulation/*.png
