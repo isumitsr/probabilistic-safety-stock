@@ -38,4 +38,4 @@ safety stock(q) = max(error quantile(q), 0)
 
 The buffer is floored at zero because a negative upper-error quantile would otherwise recommend negative safety stock. The 80th, 90th, and 95th percentiles provide increasingly conservative planning choices.
 
-These values are inputs to the future inventory simulation. They are not proof that a target service level was achieved, because M5 contains recorded sales rather than true demand, inventory positions, or stockout events.
+These seven-day values are preliminary planning inputs. Notebook 06 recalibrates the buffers for the full 14-day protection period implied by a seven-day review interval plus a seven-day lead time, and notebook 07 evaluates the resulting policies in a simulation. The simulated service levels are conditional on the stated assumptions; M5 contains recorded sales rather than true demand, inventory positions, or observed stockout events.

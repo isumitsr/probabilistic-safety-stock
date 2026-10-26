@@ -2,7 +2,7 @@
 
 ## Why this document exists
 
-This document explains the project as a connected piece of work rather than as five separate notebooks. It focuses on the questions a reader is likely to ask:
+This document explains the project as a connected piece of work rather than as seven separate notebooks. It focuses on the questions a reader is likely to ask:
 
 - What problem are we trying to solve?
 - Why is each step necessary?
@@ -11,7 +11,7 @@ This document explains the project as a connected piece of work rather than as f
 - What can we infer from the result?
 - What can we not claim from the result?
 
-The project has completed the analytical work through uncertainty calibration and safety-stock calculation. Seven of the eight planned analysis steps are implemented. Inventory-policy simulation, final holdout evaluation, and the final written conclusion are still outstanding, so “approximately 80% complete” is a practical description rather than a formal calculation.
+The statistical analysis, inventory-policy simulation, and final holdout evaluation are complete. The implementation remains intentionally limited to transparent probability, statistics, statistical forecasting, bootstrap inference, and simulation methods appropriate for AAI 500.
 
 ## 1. Project objective
 
@@ -46,10 +46,11 @@ Raw-file audit
     -> time-series EDA
     -> point-forecast comparison
     -> uncertainty calibration and safety stock
-    -> inventory-policy simulation
+    -> statistical inference and protection-period calibration
+    -> inventory-policy simulation and final evaluation
 ```
 
-Each stage answers a question needed by the next stage. We audit before modeling because corrupted or duplicated data would invalidate later results. We split by time before selecting models because random splitting would leak future information. We study demand behavior before choosing forecast comparisons. We estimate forecast uncertainty before setting probabilistic safety stock. Finally, the future simulation will test whether those planning buffers improve the service-inventory tradeoff.
+Each stage answers a question needed by the next stage. We audit before modeling because corrupted or duplicated data would invalidate later results. We split by time before selecting models because random splitting would leak future information. We study demand behavior before choosing forecast comparisons. We estimate forecast uncertainty before setting probabilistic safety stock, quantify the uncertainty in the conclusions, and then use the protected final period once to evaluate the service-inventory tradeoff.
 
 ## 4. Notebook 01: raw-data audit and initial EDA
 
@@ -84,7 +85,7 @@ The total-sales plot changes over time. This indicates that the data are not exc
 
 ### Boundary to remember
 
-Notebook 01 uses the full evaluation file for its source audit and initial dataset-wide descriptive charts. The selected-series workflow begins in notebook 02, where selection statistics use only `d_1` through `d_1885`, development data stop at `d_1913`, and `d_1914` through `d_1941` are excluded. The initial full-history charts should therefore be treated as descriptive orientation, not as evidence used to choose a model or assess final performance.
+Notebook 01 reads the evaluation-file header to confirm that the source extends through `d_1941`, but its sales-value audit and charts use only `d_1` through `d_1885`. The selected-series workflow begins in notebook 02, where selection statistics use the same training period and development data stop at `d_1913`. Final-test values from `d_1914` through `d_1941` are first loaded in notebook 07, after the policy rules are fixed.
 
 ## 5. Notebook 02: data preparation and series selection
 
@@ -276,35 +277,35 @@ The buffer is floored at zero because negative safety stock would not be meaning
 
 Across the 12 series, mean safety stock rises from 10.61 units at the 80th percentile to 16.95 at the 90th and 22.68 at the 95th. The maximum values are 53.40, 69.30, and 88.21 units. Higher targets generally require more inventory protection, but the change depends on the forecast-error distribution of each series.
 
-These are candidate planning levels. They do not yet prove that service improves or that the added inventory is worthwhile.
+These seven-day values are preliminary planning levels. The final periodic-review policy requires a 14-day protection period because its 7-day review interval and 7-day lead time overlap.
 
-## 9. What has been established so far
+## 9. Notebook 06: statistical inference and distribution analysis
 
-The implemented evidence supports the following statements:
+Notebook 06 tests how stable the earlier point estimates are. It resamples complete product-store series rather than individual days, preserving the time-related observations within each series.
 
-1. M5 product-store series differ substantially in sparsity, variation, scale, and weekly dependence.
-2. Simple forecasting methods behave differently across the selected series.
-3. The 28-day mean is the strongest overall MAE baseline in this sample, but it is not selected for every series.
-4. Empirical forecast errors can be converted into series-specific demand quantiles and safety-stock buffers.
-5. A higher target quantile usually produces a larger buffer.
-6. The current 90% interval does not reach 90% observed validation coverage.
+The 28-day mean has the lowest observed MAE, but the bootstrap interval for its difference from seasonal naive includes zero. The project therefore reports an observed ranking rather than claiming a statistically clear forecasting advantage.
 
-The evidence does not yet establish that the probabilistic policy reduces stockouts, improves fill rate, or holds less inventory than a fixed-buffer policy. Those are simulation questions.
+The notebook also compares empirical weekly-sales quantiles with normal, Poisson, and negative-binomial calculations. Weekly variance exceeds weekly mean for every selected series, so the basic Poisson assumption is too restrictive. The normal approximation is useful for explaining sampling distributions and the Central Limit Theorem, but empirical forecast errors remain the primary uncertainty method.
 
-## 10. What remains
+Coverage uncertainty is also substantial. Central 80% coverage is 79.17%, with a 95% cluster-bootstrap interval from 68.75% to 89.58%. Central 90% coverage is 85.42%, with an interval from 72.92% to 95.83%.
 
-Notebook 06 should simulate both policies under identical assumptions for:
+Finally, notebook 06 recalibrates errors for the 14-day protection period required by weekly review and a 7-day lead time.
 
-- lead time and review frequency;
-- starting inventory;
-- order timing and arrival timing;
-- treatment of unmet demand;
-- fixed-buffer definition; and
-- evaluation period.
+## 10. Notebook 07: inventory simulation and final evaluation
 
-The comparison should report simulated stockout frequency, fill rate or service level, average inventory, and the service-inventory tradeoff. After the policy is fixed, the final 28-day period can be used once for the final assessment. The last project tasks will be sensitivity analysis, limitations, final conclusions, and report preparation.
+Notebook 07 fixes both policies before opening the final 28 days. The probabilistic policy uses a series-specific empirical buffer. The fixed policy uses the same buffer for every series, set equal to the probabilistic policy's average. This gives the policies comparable average protection while testing whether the allocation matters.
 
-## 11. How to read the project correctly
+At the 90% target, the probabilistic policy raises fill rate from 96.55% to 97.89%, reduces unmet units from 119 to 73, and lowers average ending inventory from 70.40 to 68.99 units. At the 95% target, fill rate rises from 97.13% to 98.38%, unmet units fall from 99 to 56, and average ending inventory falls from 77.51 to 76.40 units.
+
+The probabilistic policy nevertheless has slightly more stockout days. It reduces the size of shortages without reducing how often every small shortage occurs. All bootstrap intervals for policy differences include zero, so the evidence is suggestive rather than statistically clear.
+
+Results also differ by profile. Stable series benefit most, intermittent series use much less inventory with unchanged fill rate, and variable series perform worse under the probabilistic policy in the final period.
+
+## 11. Final conclusion
+
+The project does not find a universal winner. Series-specific empirical uncertainty improves unit fill and slightly reduces average inventory at the higher targets, but the result is uncertain and depends on the demand profile and service metric. The evidence supports further use of probabilistic allocation, not a broad operational recommendation for Walmart.
+
+## 12. How to read the project correctly
 
 The project should be read as a transparent statistical decision study:
 
@@ -312,6 +313,6 @@ The project should be read as a transparent statistical decision study:
 - Validation compares methods on later observations.
 - Quantiles express uncertainty rather than guarantee outcomes.
 - Safety stock is calculated from historical forecast errors under stated assumptions.
-- Future inventory results will be simulations, not observed Walmart operations.
+- Inventory results are simulations, not observed Walmart operations.
 
 That boundary keeps the project aligned with AAI 500 probability, statistics, statistical modeling, inference, and introductory machine learning.

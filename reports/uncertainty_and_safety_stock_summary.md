@@ -31,4 +31,4 @@ For example, `FOODS_1_096_WI_2` has expected seven-day demand of 379.5 units. It
 - The calibration sample is small and gives each series only 52 historical weekly errors.
 - The estimates assume recent historical errors are informative about the next period.
 - Safety stock is a planning input, not an observed Walmart decision.
-- Service levels, stockouts, and average inventory cannot be evaluated until notebook 06 implements the inventory simulation.
+- These are preliminary seven-day buffers. Notebook 06 recalibrates uncertainty for the 14-day protection period, and notebook 07 reports simulated service, shortage, and inventory outcomes under explicit assumptions.
